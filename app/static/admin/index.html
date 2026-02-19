@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nofar Presentation Manager</title>
+  <link rel="stylesheet" href="/static/admin/admin.css">
+  <!-- SortableJS for drag-and-drop -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.3/Sortable.min.js"></script>
+</head>
+<body>
+  <header class="top-bar">
+    <div class="top-bar__left">
+      <h1 class="logo">Nofar <span>Presentation Manager</span></h1>
+    </div>
+    <div class="top-bar__actions">
+      <button id="btn-new" class="btn btn--primary">+ New Slide</button>
+      <a href="/presentation" target="_blank" class="btn btn--outline">View Presentation</a>
+      <button id="btn-export" class="btn btn--outline">Export HTML</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- Left: Slide List -->
+    <aside class="sidebar">
+      <div class="sidebar__header">
+        <h2>Slides</h2>
+        <span id="slide-count" class="badge">0</span>
+      </div>
+      <div id="slide-list" class="slide-list"></div>
+    </aside>
+
+    <!-- Center: Editor -->
+    <section class="editor" id="editor-panel">
+      <div class="editor__empty" id="editor-empty">
+        <p>Select a slide to edit, or create a new one.</p>
+      </div>
+      <div class="editor__content" id="editor-content" style="display:none">
+        <!-- Toolbar -->
+        <div class="editor__toolbar">
+          <select id="edit-type" class="input input--select">
+            <option value="dark">Dark (Divider)</option>
+            <option value="light">Light (Content)</option>
+          </select>
+          <div class="toolbar-spacer"></div>
+          <button id="btn-add-text" class="btn btn--sm btn--outline">+ Text</button>
+          <button id="btn-add-bullet" class="btn btn--sm btn--outline">+ Bullet</button>
+          <button id="btn-save" class="btn btn--primary">Save</button>
+          <button id="btn-duplicate" class="btn btn--sm btn--outline">Duplicate</button>
+          <button id="btn-delete" class="btn btn--sm btn--danger">Delete</button>
+        </div>
+        <!-- Tabs: Edit / HTML -->
+        <div class="editor__tabs">
+          <button class="tab active" data-tab="fields">Edit</button>
+          <button class="tab" data-tab="html">HTML</button>
+        </div>
+        <!-- Fields Tab -->
+        <div id="tab-fields" class="editor__tab-content">
+          <div id="editor-fields" class="fields-panel"></div>
+        </div>
+        <!-- HTML Tab -->
+        <div id="tab-html" class="editor__tab-content" style="display:none">
+          <textarea id="html-editor" class="html-textarea" spellcheck="false"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: Preview -->
+    <section class="preview">
+      <div class="preview__header">
+        <h2>Preview</h2>
+      </div>
+      <div class="preview__frame-wrap">
+        <iframe id="preview-frame" class="preview__frame"></iframe>
+      </div>
+    </section>
+  </main>
+
+  <!-- Template Picker Modal -->
+  <div id="modal-templates" class="modal" style="display:none">
+    <div class="modal__overlay"></div>
+    <div class="modal__content">
+      <div class="modal__header">
+        <h2>Choose a Template</h2>
+        <button class="modal__close">&times;</button>
+      </div>
+      <div id="template-grid" class="template-grid"></div>
+    </div>
+  </div>
+
+  <script src="/static/admin/admin.js"></script>
+</body>
+</html>

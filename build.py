@@ -1,0 +1,1714 @@
+#!/usr/bin/env python3
+"""Build the Nofar Europe HTML presentation."""
+
+import os
+import base64
+import glob
+
+OUT = "/Users/baralezrah/Downloads/nofar-presentation/index.html"
+IMG_DIR = "/Users/baralezrah/Downloads/nofar-presentation/images"
+
+# Pre-encode key images as base64 for embedding
+def img_b64(filename):
+    """Return base64 data URI for an image file."""
+    path = os.path.join(IMG_DIR, filename)
+    if not os.path.exists(path):
+        return ""
+    ext = filename.split('.')[-1]
+    mime = {'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'svg': 'image/svg+xml'}.get(ext, 'image/png')
+    with open(path, 'rb') as f:
+        data = base64.b64encode(f.read()).decode()
+    return f"data:{mime};base64,{data}"
+
+
+# ============================================================
+# HTML TEMPLATE
+# ============================================================
+
+CSS = """
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&display=swap');
+
+:root {
+  --bg-dark: #06060F;
+  --bg-dark-2: #0E0E1F;
+  --bg-light: #FAFAFD;
+  --bg-card: #FFFFFF;
+  --brand: #5528F9;
+  --brand-light: #7B5CFB;
+  --brand-dark: #3A15B0;
+  --accent: #00D68F;
+  --accent-2: #00B4D8;
+  --text-primary: #1A1A2E;
+  --text-secondary: #5A5A72;
+  --text-muted: #9595A8;
+  --text-on-dark: #E8E8F0;
+  --text-on-dark-muted: #8888A0;
+  --border: #E8E6F0;
+  --border-dark: #2A2A3F;
+  --red: #E53E3E;
+  --table-header: #1A1A2E;
+  --table-alt: #F5F4F9;
+  --shadow: 0 4px 24px rgba(0,0,0,0.06);
+  --shadow-lg: 0 12px 48px rgba(0,0,0,0.10);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+html, body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg-dark);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Slide System ── */
+.deck {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  transform: translateX(30px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.slide.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+}
+.slide.prev {
+  transform: translateX(-30px);
+}
+
+/* ── Dark Section Dividers ── */
+.slide--dark {
+  background: var(--bg-dark);
+  background-image:
+    radial-gradient(ellipse at 70% 50%, rgba(85,40,249,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at 30% 80%, rgba(0,214,143,0.06) 0%, transparent 50%);
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 4rem;
+}
+.slide--dark .divider-badge {
+  display: inline-block;
+  padding: 0.4rem 1.6rem;
+  border: 1px solid rgba(85,40,249,0.5);
+  border-radius: 100px;
+  color: var(--brand-light);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+}
+.slide--dark h1 {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  color: #fff;
+  line-height: 1.15;
+  max-width: 800px;
+}
+.slide--dark h1 .accent {
+  background: linear-gradient(135deg, var(--brand-light), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.slide--dark .subtitle {
+  color: var(--text-on-dark-muted);
+  font-size: 1.15rem;
+  font-weight: 300;
+  margin-top: 1rem;
+  letter-spacing: 0.02em;
+}
+.slide--dark .divider-line {
+  width: 80px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--brand), var(--accent));
+  margin: 1.5rem auto 0;
+  border-radius: 2px;
+}
+
+/* ── Light Content Slides ── */
+.slide--light {
+  background: var(--bg-light);
+  padding: 2.5rem 3.5rem 2rem;
+}
+.slide--light .slide-header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+}
+.slide--light .slide-header h2 {
+  font-weight: 800;
+  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+.slide--light .slide-header h2 .brand {
+  color: var(--brand);
+}
+.slide--light .slide-header .tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--brand);
+  background: rgba(85,40,249,0.08);
+  padding: 0.25rem 0.75rem;
+  border-radius: 100px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ── Content Grid ── */
+.content-grid {
+  display: grid;
+  gap: 1.5rem;
+  flex: 1;
+}
+.content-grid--2 { grid-template-columns: 1fr 1fr; }
+.content-grid--sidebar { grid-template-columns: 1fr 320px; }
+.content-grid--sidebar-left { grid-template-columns: 320px 1fr; }
+.content-grid--3 { grid-template-columns: 1fr 1fr 1fr; }
+.content-grid--5 { grid-template-columns: repeat(5, 1fr); }
+
+/* ── Cards ── */
+.card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.card--dark {
+  background: var(--bg-dark-2);
+  border-color: var(--border-dark);
+  color: var(--text-on-dark);
+}
+.card h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+}
+.card--dark h3 {
+  color: #fff;
+}
+.card h4 {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--brand);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── Stat Boxes ── */
+.stat-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.stat-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  flex: 1;
+  min-width: 140px;
+  box-shadow: var(--shadow);
+}
+.stat-box .stat-value {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--brand);
+  line-height: 1.1;
+}
+.stat-box .stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.3rem;
+  font-weight: 500;
+}
+.stat-box--accent .stat-value { color: var(--accent); }
+.stat-box--dark {
+  background: var(--bg-dark-2);
+  border-color: var(--border-dark);
+}
+.stat-box--dark .stat-label { color: var(--text-on-dark-muted); }
+
+/* ── Tables ── */
+table.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+table.data-table thead th {
+  background: var(--table-header);
+  color: #fff;
+  font-weight: 600;
+  padding: 0.7rem 1rem;
+  text-align: left;
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+table.data-table thead th:first-child { border-radius: 8px 0 0 0; }
+table.data-table thead th:last-child { border-radius: 0 8px 0 0; }
+table.data-table tbody td {
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+  font-weight: 400;
+}
+table.data-table tbody tr:nth-child(even) td {
+  background: var(--table-alt);
+}
+table.data-table tbody tr:last-child td {
+  border-bottom: 2px solid var(--brand);
+}
+table.data-table tbody tr:last-child td {
+  font-weight: 700;
+}
+table.data-table tbody td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+table.data-table tbody td.highlight {
+  color: var(--brand);
+  font-weight: 700;
+}
+
+/* ── Bullet Lists ── */
+.bullet-list {
+  list-style: none;
+  padding: 0;
+}
+.bullet-list li {
+  position: relative;
+  padding-left: 1.2rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+.bullet-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--brand);
+}
+.bullet-list li strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.bullet-list--accent li::before { background: var(--accent); }
+
+.bullet-list--dark li { color: var(--text-on-dark-muted); }
+.bullet-list--dark li strong { color: var(--text-on-dark); }
+.bullet-list--dark li::before { background: var(--brand-light); }
+
+/* ── KPI Strip ── */
+.kpi-strip {
+  display: flex;
+  gap: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  box-shadow: var(--shadow);
+}
+.kpi-item {
+  flex: 1;
+  padding: 1rem;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+.kpi-item:last-child { border-right: none; }
+.kpi-item .kpi-val {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--brand);
+}
+.kpi-item .kpi-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+  font-weight: 500;
+}
+
+/* ── Team Grid ── */
+.team-section h4 {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--brand);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 2px solid var(--brand);
+}
+.team-member {
+  margin-bottom: 0.8rem;
+}
+.team-member .name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+.team-member .role {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.team-member .bio {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-top: 0.15rem;
+}
+
+/* ── Value Chain ── */
+.chain-row {
+  display: flex;
+  gap: 0.75rem;
+}
+.chain-step {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  text-align: center;
+  box-shadow: var(--shadow);
+  position: relative;
+}
+.chain-step::after {
+  content: '→';
+  position: absolute;
+  right: -0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--brand);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+.chain-step:last-child::after { display: none; }
+.chain-step .step-icon {
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+}
+.chain-step .step-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--brand);
+  margin-bottom: 0.4rem;
+}
+.chain-step .step-desc {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ── Timeline ── */
+.timeline {
+  display: flex;
+  gap: 1.5rem;
+  position: relative;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  top: 2.5rem;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--border);
+}
+.timeline-item {
+  flex: 1;
+  text-align: center;
+  position: relative;
+  padding-top: 3.5rem;
+}
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  top: 2.1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--brand);
+  border: 2px solid var(--bg-light);
+  z-index: 1;
+}
+
+/* ── Country Cards ── */
+.country-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+}
+.country-card .country-flag {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+.country-card .country-name {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+}
+
+/* ── Sidebar Dark ── */
+.sidebar-dark {
+  background: var(--bg-dark-2);
+  border-radius: 12px;
+  padding: 1.5rem;
+  color: var(--text-on-dark);
+  border: 1px solid var(--border-dark);
+}
+.sidebar-dark h3 {
+  color: #fff;
+  font-size: 0.95rem;
+  margin-bottom: 0.75rem;
+}
+.sidebar-dark .stat-value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--brand-light);
+}
+.sidebar-dark .stat-label {
+  font-size: 0.7rem;
+  color: var(--text-on-dark-muted);
+}
+
+/* ── Phase Cards ── */
+.phase-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+.phase-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--brand), var(--accent));
+}
+.phase-card .phase-num {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--brand);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 0.4rem;
+}
+
+/* ── Navigation ── */
+.nav {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  z-index: 100;
+  background: rgba(6,6,15,0.9);
+  backdrop-filter: blur(12px);
+  padding: 0.5rem 1.2rem;
+  border-radius: 100px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.nav button {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+.nav button:hover { background: rgba(255,255,255,0.1); }
+.nav .counter {
+  color: var(--text-on-dark-muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  min-width: 60px;
+  text-align: center;
+}
+.nav .progress {
+  width: 120px;
+  height: 2px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.nav .progress-bar {
+  height: 100%;
+  background: var(--brand);
+  transition: width 0.4s ease;
+  border-radius: 2px;
+}
+
+/* ── Footnote ── */
+.footnote {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: auto;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  font-style: italic;
+}
+
+/* ── Misc ── */
+.text-brand { color: var(--brand); }
+.text-accent { color: var(--accent); }
+.font-serif { font-family: 'Source Serif 4', serif; }
+.text-sm { font-size: 0.82rem; }
+.text-xs { font-size: 0.72rem; }
+.text-lg { font-size: 1.1rem; }
+.fw-700 { font-weight: 700; }
+.fw-800 { font-weight: 800; }
+.mt-1 { margin-top: 0.75rem; }
+.mt-2 { margin-top: 1.5rem; }
+.mb-1 { margin-bottom: 0.75rem; }
+.gap-sm { gap: 0.75rem; }
+
+.org-chart { font-size: 0.72rem; }
+.org-node {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.72rem;
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+.org-node--brand { border-color: var(--brand); color: var(--brand); }
+.org-node--blue { border-color: var(--accent-2); color: var(--accent-2); }
+.org-node--red { border-color: var(--red); color: var(--red); }
+
+/* ── Scrollbar ── */
+.slide::-webkit-scrollbar { width: 4px; }
+.slide::-webkit-scrollbar-track { background: transparent; }
+.slide::-webkit-scrollbar-thumb { background: rgba(85,40,249,0.3); border-radius: 4px; }
+
+/* ── Print ── */
+@media print {
+  .nav { display: none; }
+  .slide { position: relative; opacity: 1; visibility: visible; transform: none;
+    page-break-after: always; min-height: 100vh; }
+}
+"""
+
+JS = """
+const slides = document.querySelectorAll('.slide');
+let current = 0;
+const total = slides.length;
+
+function show(idx) {
+  slides.forEach((s, i) => {
+    s.classList.remove('active', 'prev');
+    if (i === idx) s.classList.add('active');
+    else if (i < idx) s.classList.add('prev');
+  });
+  current = idx;
+  document.querySelector('.counter').textContent = `${idx + 1} / ${total}`;
+  document.querySelector('.progress-bar').style.width = `${((idx + 1) / total) * 100}%`;
+}
+
+function next() { if (current < total - 1) show(current + 1); }
+function prev() { if (current > 0) show(current - 1); }
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+  if (e.key === 'Home') { e.preventDefault(); show(0); }
+  if (e.key === 'End') { e.preventDefault(); show(total - 1); }
+});
+
+// Touch support
+let touchStartX = 0;
+document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+document.addEventListener('touchend', e => {
+  const diff = touchStartX - e.changedTouches[0].clientX;
+  if (Math.abs(diff) > 50) { diff > 0 ? next() : prev(); }
+});
+
+show(0);
+"""
+
+# ============================================================
+# SLIDES CONTENT
+# ============================================================
+
+def divider(title, subtitle="", accent_word=""):
+    """Dark section divider slide."""
+    h1 = title
+    if accent_word:
+        h1 = title.replace(accent_word, f'<span class="accent">{accent_word}</span>')
+    sub = f'<p class="subtitle">{subtitle}</p>' if subtitle else ''
+    return f'''<div class="slide slide--dark">
+  <div class="divider-badge">Nofar Europe</div>
+  <h1>{h1}</h1>
+  {sub}
+  <div class="divider-line"></div>
+</div>'''
+
+slides_html = []
+
+# ── SLIDE 1: Title ──
+slides_html.append('''<div class="slide slide--dark">
+  <div class="divider-badge">Investor Presentation</div>
+  <h1>Nofar <span class="accent">Europe</span></h1>
+  <p class="subtitle">London &middot; February 2026</p>
+  <div class="divider-line"></div>
+</div>''')
+
+# ── SLIDE 2: Overview Divider ──
+slides_html.append(divider("Overview", "Company snapshot and key highlights"))
+
+# ── SLIDE 3: In a Nutshell ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2><span class="brand">Nofar</span> Europe &ndash; In a Nutshell</h2>
+  </div>
+  <div class="content-grid content-grid--sidebar">
+    <div>
+      <ul class="bullet-list">
+        <li><strong>Leading European renewable IPP</strong></li>
+        <li><strong>Strategically diversified footprint</strong> across both high-growth European markets and mature European markets</li>
+        <li><strong>Strong in-house capabilities</strong> &ndash; development, construction, financing, and energy trading</li>
+        <li><strong>Focused on utility-scale and C&amp;I PV and BESS</strong> projects</li>
+        <li><strong>793 MW &amp; 60 MWh</strong> Operational assets with <strong class="text-brand">EBITDA of &euro;68m p.a.</strong></li>
+        <li><strong class="text-brand">394 MW &amp; 209 MWh to be connected in Q2 2026</strong>, 2027 Pro-forma Run-rate EBITDA <strong>&euro;441m p.a.</strong></li>
+        <li><strong>Proven track record</strong> for scaling renewable energy assets across Europe</li>
+        <li>Prudent and robust financial structure with <strong>LTV of 45%</strong> (including available facilities) and with a debt capacity of additional 500m EUR</li>
+      </ul>
+      <p class="footnote">* Based on internal estimation and on 100%</p>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:0.75rem;">
+      <div class="kpi-strip" style="border-color:var(--border-dark); background:var(--bg-dark-2);">
+        <div class="kpi-item" style="border-color:var(--border-dark);"><div class="kpi-val" style="font-size:1.4rem;">&euro;441M</div><div class="kpi-label">2027 Pro-forma Run-rate EBITDA</div></div>
+        <div class="kpi-item" style="border-color:var(--border-dark);"><div class="kpi-val" style="font-size:1.4rem;">&euro;3.3bn</div><div class="kpi-label">Gross Asset Value (EV)*</div></div>
+      </div>
+      <div class="kpi-strip" style="border-color:var(--border-dark); background:var(--bg-dark-2);">
+        <div class="kpi-item" style="border-color:var(--border-dark);"><div class="kpi-val" style="font-size:1.4rem;">&euro;702M</div><div class="kpi-label">Outstanding loans (excl. 782m available)</div></div>
+        <div class="kpi-item" style="border-color:var(--border-dark);"><div class="kpi-val" style="font-size:1.4rem;">&euro;1.9bn</div><div class="kpi-label">Nofar EU Equity Value*</div></div>
+      </div>
+      <div class="kpi-strip" style="border-color:var(--border-dark); background:var(--bg-dark-2);">
+        <div class="kpi-item" style="border-color:var(--border-dark);"><div class="kpi-val" style="font-size:1.4rem;">45%</div><div class="kpi-label">Consolidated LTV*</div></div>
+      </div>
+      <div class="card card--dark" style="padding:0.75rem;">
+        <h4 style="font-size:0.7rem;">Pipeline</h4>
+        <div style="font-size:0.75rem; color:var(--text-on-dark-muted); line-height:1.6;">
+          <strong style="color:#fff;">Operational:</strong> 793 MW / 60 MWh<br>
+          <strong style="color:var(--accent);">Ready to connect:</strong> 394 MW / 209 MWh<br>
+          <strong style="color:var(--brand-light);">Construction &amp; Pre-construction:</strong> 936 MW / 3,326 MWh
+        </div>
+      </div>
+    </div>
+  </div>
+</div>''')
+
+# ── SLIDE 4: Portfolio ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2>Advanced, High-Quality Portfolio <span style="font-weight:400">Diversified by Technology, Geography and Segment</span></h2>
+  </div>
+  <div class="content-grid content-grid--2">
+    <div>
+      <div class="card mb-1">
+        <h3>Strategically Diversified Portfolio Across PV and BESS</h3>
+        <div class="kpi-strip mt-1">
+          <div class="kpi-item"><div class="kpi-val">437</div><div class="kpi-label">MW Italy</div></div>
+          <div class="kpi-item"><div class="kpi-val">684</div><div class="kpi-label">MWh UK</div></div>
+          <div class="kpi-item"><div class="kpi-val">90</div><div class="kpi-label">MW Poland</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Balanced Geographic Diversification Across Eight Countries</h3>
+        <div class="kpi-strip mt-1">
+          <div class="kpi-item"><div class="kpi-val">&euro;1.9B</div><div class="kpi-label">Total EV</div></div>
+          <div class="kpi-item"><div class="kpi-val">918</div><div class="kpi-label">MW + 1.4 GWh Romania</div></div>
+          <div class="kpi-item"><div class="kpi-val">209</div><div class="kpi-label">MWh Germany</div></div>
+          <div class="kpi-item"><div class="kpi-val">100</div><div class="kpi-label">MWh Spain</div></div>
+          <div class="kpi-item"><div class="kpi-val">27</div><div class="kpi-label">MW Serbia</div></div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:0.75rem;">
+      <div class="card" style="text-align:center; border-left:3px solid var(--brand);">
+        <div style="font-size:2rem;">☀️</div>
+        <div style="font-weight:700; font-size:0.85rem; color:var(--text-muted);">Storage</div>
+      </div>
+      <div class="card" style="text-align:center; border-left:3px solid var(--accent);">
+        <div style="font-size:2rem;">🏭</div>
+        <div style="font-weight:700; font-size:0.85rem; color:var(--text-muted);">Utility</div>
+      </div>
+      <div class="card" style="text-align:center; border-left:3px solid var(--accent-2);">
+        <div style="font-size:2rem;">🏢</div>
+        <div style="font-weight:700; font-size:0.85rem; color:var(--text-muted);">C&amp;I</div>
+      </div>
+    </div>
+  </div>
+  <p class="footnote">*Including M&amp;A deals signed but not yet completed. Operational, under construction and pre-construction projects, 100% data. In parentheses: additional capacity from M&amp;A transactions.</p>
+</div>''')
+
+# ── SLIDE 5: EBITDA Bridge ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2><span class="brand">Nofar</span> Europe &ndash; EBITDA Bridge and Revenue Profile</h2>
+  </div>
+  <div class="content-grid content-grid--sidebar">
+    <div>
+      <table class="data-table">
+        <thead><tr><th></th><th>Operational (Day 1)</th><th>2026E Connections</th><th>2027E Pro-Forma Run-Rate</th></tr></thead>
+        <tbody>
+          <tr><td>Consolidated EBITDA (m EUR)</td><td class="num highlight">68</td><td class="num highlight">129</td><td class="num highlight">441</td></tr>
+          <tr><td>PV (MW)</td><td class="num">1,187</td><td class="num">936</td><td class="num">2,525</td></tr>
+          <tr><td>BESS (MWh)</td><td class="num">269</td><td class="num">3,326</td><td class="num">9,947</td></tr>
+          <tr><td>Contracted Revenue %</td><td class="num">93%</td><td class="num">45%</td><td class="num">~80%+ Blended</td></tr>
+        </tbody>
+      </table>
+      <p class="text-sm mt-2" style="color:var(--text-secondary);">With European power prices being volatile, we &ldquo;locked in&rdquo; a significant portion of our income stream via PPAs while the exposure to the merchant market is mitigated through the internal trading platform.</p>
+    </div>
+    <div class="sidebar-dark">
+      <h3>🇩🇪 The Germany Driver</h3>
+      <p class="text-xs" style="color:var(--text-on-dark-muted); line-height:1.6;">A key part of Q2 2026 capacity is the <strong style="color:#fff">209 MWh Stendal BESS project</strong> in Germany, under Tolling agreement, adding <strong style="color:var(--accent);">EUR 11.8m to 2026 EBITDA</strong> (EUR 13.8m revenues).</p>
+      <h3 style="margin-top:1.25rem;">🇷🇴 The Romania Driver</h3>
+      <p class="text-xs" style="color:var(--text-on-dark-muted); line-height:1.6;">Additional pivot: <strong style="color:#fff">389 MW PV project</strong> in Romania, expected to <strong style="color:var(--accent);">add EUR 32.5m to 2026 EBITDA</strong> (40m expected revenues). 74 MW under CfD for 15 years.</p>
+    </div>
+  </div>
+</div>''')
+
+# ── SLIDE 6: Track Record ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2><span class="brand">Nofar</span> Europe &ndash; Proven Track Record of Accelerated Growth</h2>
+  </div>
+  <div style="display:grid; grid-template-columns:repeat(6, 1fr); gap:0.75rem; flex:1; font-size:0.72rem;">
+    <div class="phase-card" style="padding:1rem;">
+      <div class="phase-num">2021</div>
+      <h3 style="font-size:0.85rem;">Market Entry</h3>
+      <ul class="bullet-list" style="font-size:0.68rem;">
+        <li><strong>Italy:</strong> Launch of Sunprime</li>
+        <li><strong>Spain:</strong> Project execution &amp; PPA signing</li>
+        <li><strong>Romania:</strong> Construction launch &amp; pipeline build-up</li>
+        <li><strong>UK:</strong> BESS platform launch</li>
+        <li><strong>Poland:</strong> Market entry &amp; portfolio setup</li>
+      </ul>
+    </div>
+    <div class="phase-card" style="padding:1rem;">
+      <div class="phase-num">2022</div>
+      <h3 style="font-size:0.85rem;">Scaling</h3>
+      <ul class="bullet-list" style="font-size:0.68rem;">
+        <li><strong>UK:</strong> Launched Noventum</li>
+        <li><strong>Spain:</strong> 155 MW completed construction</li>
+        <li><strong>Romania:</strong> 155 MW construction completed (largest project in the country)</li>
+        <li><strong>Poland:</strong> 20 MW construction completed</li>
+      </ul>
+    </div>
+    <div class="phase-card" style="padding:1rem;">
+      <div class="phase-num">2023</div>
+      <h3 style="font-size:0.85rem;">Expansion</h3>
+      <ul class="bullet-list" style="font-size:0.68rem;">
+        <li><strong>Spain:</strong> 83 MW commissioned</li>
+        <li><strong>UK:</strong> 60 MW commissioned &amp; financed with Goldman Sachs</li>
+        <li><strong>Italy:</strong> Self-development of 3 GWh BESS pipeline</li>
+        <li><strong>Greece:</strong> 100 MWh storage pipeline</li>
+        <li><strong>Poland:</strong> 700 MWh storage portfolio launched</li>
+        <li><strong>Romania:</strong> 600 MW advanced to RTB</li>
+      </ul>
+    </div>
+    <div class="phase-card" style="padding:1rem;">
+      <div class="phase-num">2024</div>
+      <h3 style="font-size:0.85rem;">Execution</h3>
+      <ul class="bullet-list" style="font-size:0.68rem;">
+        <li><strong>Germany:</strong> Project execution with secured tolling &amp; financing</li>
+        <li><strong>Italy:</strong> &euro;335M cumulative financial closes</li>
+        <li><strong>Romania:</strong> Secured market-leading CfD tariff for Slobozia (74 MW)</li>
+        <li><strong>UK:</strong> Cellarhead Financed by Goldman Sachs &ndash; &pound;152M</li>
+        <li><strong>Poland:</strong> BESS pipeline growth to 3 GWh</li>
+      </ul>
+    </div>
+    <div class="phase-card" style="padding:1rem;">
+      <div class="phase-num">2025</div>
+      <h3 style="font-size:0.85rem;">Maturation</h3>
+      <ul class="bullet-list" style="font-size:0.68rem;">
+        <li><strong>Romania:</strong> Large-scale commissioning &amp; storage expansion; divest of Ratesti &ndash; 122% ROI</li>
+        <li><strong>Germany:</strong> 209 MWh BESS construction completed; 49% sold at 29% EIRR</li>
+        <li><strong>Spain:</strong> Pipeline hybridization strategy underway, 1.3 GWh BESS</li>
+        <li><strong>Italy &amp; Spain:</strong> 5% Farm-Down at a 35% Premium to Reported Asset Value</li>
+      </ul>
+    </div>
+    <div class="phase-card" style="padding:1rem;">
+      <div class="phase-num">2026</div>
+      <h3 style="font-size:0.85rem;">Transformation</h3>
+      <ul class="bullet-list" style="font-size:0.68rem;">
+        <li><strong>Italy:</strong> Winning a CfD Tariff securing &euro;166M in future revenue</li>
+        <li><strong>Energy Trading:</strong> Initiation of trading platform and acquisition of Nexte</li>
+      </ul>
+    </div>
+  </div>
+</div>''')
+
+# ── SLIDE 7: Value Chain ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2>Significant Value Through Project Development and Independent Trading</h2>
+  </div>
+  <p class="text-sm mb-1" style="color:var(--text-secondary);">Full control across the entire value chain allows maximizing project performance</p>
+  <div class="chain-row">
+    <div class="chain-step">
+      <div class="step-icon">🔍</div>
+      <div class="step-title">Development</div>
+      <div class="step-desc">End-to-end origination and greenfield project development, from site identification through permitting and RTB</div>
+    </div>
+    <div class="chain-step">
+      <div class="step-icon">🏗️</div>
+      <div class="step-title">Construction</div>
+      <div class="step-desc">Full EPC management and delivery, ensuring projects are built on time and on budget</div>
+    </div>
+    <div class="chain-step">
+      <div class="step-icon">💰</div>
+      <div class="step-title">Financing</div>
+      <div class="step-desc">Securing non-recourse senior debt for renewable projects</div>
+    </div>
+    <div class="chain-step">
+      <div class="step-icon">⚡</div>
+      <div class="step-title">Operation</div>
+      <div class="step-desc">Active asset management and performance optimization across the portfolio</div>
+    </div>
+    <div class="chain-step">
+      <div class="step-icon">📊</div>
+      <div class="step-title">Trading</div>
+      <div class="step-desc">In-house energy trading and PPA structuring to maximize revenue and manage market exposure</div>
+    </div>
+  </div>
+</div>''')
+
+# ── SLIDE 8: Strong Asset Base ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2>Strong Asset Base with a Clear Business Plan for Accelerated Growth</h2>
+    <span class="tag">100% holdings, Financial data in &euro;M</span>
+  </div>
+  <div class="content-grid content-grid--2">
+    <div>
+      <table class="data-table">
+        <thead><tr><th>Status</th><th>PV (DC)</th><th>Storage (MWh)</th><th>Revenue (&euro;M)</th><th>EBITDA (&euro;M)</th><th>CAPEX (&euro;M)</th></tr></thead>
+        <tbody>
+          <tr><td>Operational</td><td class="num">1,187</td><td class="num">269</td><td class="num">140</td><td class="num">112</td><td class="num">1,002</td></tr>
+          <tr><td>Construction &amp; Pre-construction</td><td class="num">936</td><td class="num">3,326</td><td class="num">235</td><td class="num">197</td><td class="num">1,964</td></tr>
+          <tr><td>Advanced development</td><td class="num">403</td><td class="num">6,352</td><td class="num">204</td><td class="num">178</td><td class="num">1,011</td></tr>
+          <tr><td><strong>Total</strong></td><td class="num"><strong>2,525</strong></td><td class="num"><strong>9,947</strong></td><td class="num"><strong>580</strong></td><td class="num"><strong>487</strong></td><td class="num"><strong>3,977</strong></td></tr>
+        </tbody>
+      </table>
+      <div class="card mt-2" style="border-left: 3px solid var(--brand);">
+        <p class="text-sm"><strong>The Mature pipeline is projected to generate <span class="text-brand">&euro;580M in annual revenue with strong returns</span></strong></p>
+        <div class="stat-row mt-1">
+          <div class="stat-box"><div class="stat-value">12%*</div><div class="stat-label">Equity IRR</div></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h3 style="font-size:0.95rem; margin-bottom:0.75rem;">Accelerated Growth Strategy Beyond Core Operations</h3>
+      <ul class="bullet-list">
+        <li><strong>Self-initiated Greenfield projects:</strong> creating new high-value assets</li>
+        <li><strong>Hybridizing existing projects:</strong> expanding capacity and optimizing returns</li>
+        <li>Storage de-risks renewable portfolios</li>
+        <li><strong>Selective acquisitions &amp; M&amp;A:</strong> targeted expansion in key markets</li>
+        <li><strong>Divest non-core assets:</strong> e.g., Serbia, to focus on strategic regions</li>
+        <li><strong>Geographic focus:</strong> increase presence in Western &amp; Northern Europe</li>
+        <li><strong>New sector opportunities:</strong> Wind, Conventional Energy, and Data Centers</li>
+      </ul>
+    </div>
+  </div>
+</div>''')
+
+# ── SLIDE 9: Equity Value ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2><span class="brand">Nofar</span> Europe | <span class="text-brand">~&euro;1.9bn Equity Value</span></h2>
+  </div>
+  <p class="text-sm mb-1" style="color:var(--text-secondary);"><strong>Nofar EU Equity Value of ~&euro;1.9bn is validated by the O.Y. Nofar market cap</strong></p>
+  <div class="content-grid content-grid--2">
+    <div>
+      <h4 style="color:var(--brand); margin-bottom:0.5rem;">75% of Nofar EU value is based on advanced projects</h4>
+      <table class="data-table">
+        <thead><tr><th>Projects / Platform</th><th>Equity NPV &euro;M</th></tr></thead>
+        <tbody>
+          <tr><td>Operational &amp; ready to connect</td><td class="num highlight">470*</td></tr>
+          <tr><td>Construction &amp; Pre-construction</td><td class="num highlight">478*</td></tr>
+          <tr><td>Advanced development</td><td class="num highlight">488*</td></tr>
+          <tr><td>Development</td><td class="num">246</td></tr>
+          <tr><td>Noventum</td><td class="num">229</td></tr>
+          <tr><td>Platforms</td><td class="num">193</td></tr>
+          <tr><td><strong>Total Value</strong></td><td class="num"><strong>1,907</strong></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h4 style="color:var(--brand); margin-bottom:0.5rem;">Nofar EU value validated by O.Y. Nofar market cap</h4>
+      <table class="data-table">
+        <thead><tr><th></th><th>Mil NIS</th><th>Mil Euro</th></tr></thead>
+        <tbody>
+          <tr><td>OY Nofar Market cap (15.02.2026)</td><td class="num">6,379</td><td class="num">1,733</td></tr>
+          <tr><td>Nofar Bonds</td><td class="num">1,911</td><td class="num">519</td></tr>
+          <tr><td>Nofar Israel (Clal Deal)</td><td class="num">(1,300)</td><td class="num">(353)</td></tr>
+          <tr><td>USA PineGate Deal</td><td class="num">(442)</td><td class="num">(120)</td></tr>
+          <tr><td>Nofar USA &amp; Blue Sky Equity Invested</td><td class="num">(102)</td><td class="num">(28)</td></tr>
+          <tr><td><strong>Nofar Europe</strong></td><td class="num"><strong>6,379</strong></td><td class="num"><strong>1,752</strong></td></tr>
+          <tr><td>Discount to NAV</td><td class="num highlight">8.1%</td><td class="num highlight">8.1%</td></tr>
+        </tbody>
+      </table>
+      <div class="card mt-1" style="text-align:center; border: 2px solid var(--brand);">
+        <div style="font-size:1.3rem; font-weight:800; color:var(--brand);">8.1% Discount to NAV</div>
+      </div>
+    </div>
+  </div>
+  <p class="footnote">*Including M&amp;A deals signed but not yet completed</p>
+</div>''')
+
+# ── SLIDE 10: Governance Divider ──
+slides_html.append(divider("Governance &amp; Structure", "Corporate structure and leadership team"))
+
+# ── SLIDE 11: Corporate Structure ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2>Proforma <span class="brand">Nofar</span> Europe Structure</h2>
+  </div>
+  <p class="text-sm mb-1" style="color:var(--text-secondary);">Consolidate all regional SPVs (UK, Germany, Romania, Italy, Spain) under a single European HoldCo.</p>
+  <div class="card" style="padding:1.5rem; font-size:0.78rem; line-height:2.2;">
+    <div style="text-align:center; margin-bottom:1rem;">
+      <span class="org-node org-node--brand" style="font-size:0.9rem;"><strong>Nofar O.Y.</strong></span>
+      <div style="color:var(--text-muted); font-size:0.7rem;">99.8% ↓</div>
+      <span class="org-node org-node--brand"><strong>Europe LP</strong></span>
+      <div style="color:var(--text-muted); font-size:0.7rem;">↓</div>
+      <span class="org-node org-node--brand"><strong>Europe NV</strong></span>
+    </div>
+    <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:1rem; text-align:center;">
+      <div>
+        <span class="org-node org-node--brand">FinCo</span>
+        <div style="font-size:0.65rem; color:var(--text-muted); margin-top:0.3rem;">🇳🇱</div>
+      </div>
+      <div>
+        <span class="org-node org-node--red">Atlantic Green</span>
+        <div style="margin-top:0.5rem;"><span class="org-node org-node--red" style="font-size:0.65rem;">Noventum</span></div>
+        <div style="margin-top:0.3rem;"><span class="org-node org-node--red" style="font-size:0.65rem;">R&amp;S</span> <span class="org-node org-node--red" style="font-size:0.65rem;">C&amp;S</span></div>
+        <div style="font-size:0.65rem; color:var(--text-muted); margin-top:0.3rem;">🇬🇧</div>
+      </div>
+      <div>
+        <span class="org-node">Pol HoldCo</span>
+        <div style="margin-top:0.5rem;"><span class="org-node" style="font-size:0.65rem;">Cybinka</span> <span class="org-node" style="font-size:0.65rem;">Nofar Polska</span></div>
+        <div style="font-size:0.65rem; color:var(--text-muted); margin-top:0.3rem;">🇵🇱</div>
+      </div>
+      <div>
+        <span class="org-node">Serb HoldCo</span>
+        <div style="margin-top:0.5rem;"><span class="org-node" style="font-size:0.65rem;">Serbia Subs</span></div>
+        <div style="font-size:0.65rem; color:var(--text-muted); margin-top:0.3rem;">🇷🇸</div>
+      </div>
+      <div>
+        <span class="org-node org-node--blue">Rom HoldCo</span>
+        <div style="margin-top:0.5rem;"><span class="org-node org-node--blue" style="font-size:0.65rem;">Romanian Subs (95%)</span></div>
+        <div style="margin-top:0.3rem;"><span class="org-node org-node--blue" style="font-size:0.65rem;">Aviv Renewable (95%)</span></div>
+        <div style="font-size:0.65rem; color:var(--text-muted); margin-top:0.3rem;">🇷🇴</div>
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:1rem; text-align:center; margin-top:1rem;">
+      <div>
+        <span class="org-node">Frig Investment</span>
+        <div style="margin-top:0.3rem;"><span class="org-node" style="font-size:0.65rem;">Seerose</span></div>
+        <div style="font-size:0.65rem; color:var(--text-muted); margin-top:0.3rem;">🇩🇪 Germany</div>
+      </div>
+      <div>
+        <span class="org-node org-node--blue">Nofar GR → Far Bess / Check Bess</span>
+        <div style="font-size:0.65rem; color:var(--text-muted); margin-top:0.3rem;">🇬🇷 Greece</div>
+      </div>
+      <div>
+        <span class="org-node">Andromeda (Cyprus)</span>
+        <div style="margin-top:0.3rem;"><span class="org-node" style="font-size:0.65rem;">Sunprime → Subs</span></div>
+        <div style="margin-top:0.3rem;"><span class="org-node" style="font-size:0.65rem;">Olmedilla / Sabinar / Hive</span></div>
+        <div style="font-size:0.65rem; color:var(--text-muted); margin-top:0.3rem;">🇮🇹🇪🇸 Italy &amp; Spain</div>
+      </div>
+      <div>
+        <span class="org-node">Noy Nofar LP</span>
+        <div style="font-size:0.65rem; color:var(--text-muted); margin-top:0.3rem;">47.5%</div>
+      </div>
+    </div>
+  </div>
+</div>''')
+
+# ── SLIDE 12: Team ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2><span class="brand">Nofar</span> EU Team &ndash; <span style="font-weight:400">A Highly Experienced and Multidisciplinary Leadership Team</span></h2>
+  </div>
+  <div class="card mb-1" style="border-left:3px solid var(--brand); padding:0.75rem 1.25rem;">
+    <span class="name" style="font-size:1rem;"><strong>Ofer Yannay</strong></span> &mdash; <span class="text-sm">CEO Nofar &amp; Chairman of Nofar Europe</span>
+    <p class="text-xs" style="color:var(--text-secondary);">Founder, chairman, controlling shareholder, and CEO of Nofar Energy, the global renewable energy company he established in 2011</p>
+  </div>
+  <div class="content-grid content-grid--3">
+    <div class="team-section">
+      <h4>Technical</h4>
+      <div class="team-member"><div class="name">Elad Michaeli</div><div class="bio">13+ years leading renewable energy projects (wind, solar, storage) end-to-end: development, financing, construction, and operations</div></div>
+      <div class="team-member"><div class="name">Sagi Sendler</div><div class="bio">18+ years of experience in electrical systems and more than 14 years specializing in renewable energy</div></div>
+      <div class="team-member"><div class="name">Maayan As</div><div class="bio">Leading Nofar's Trading &amp; Revenue Management with over a decade of experience in the energy sector</div></div>
+    </div>
+    <div class="team-section">
+      <h4>Management &amp; Operations</h4>
+      <div class="team-member"><div class="name">Ella Raychman</div><div class="role">CEO Nofar Europe</div></div>
+      <div class="team-member"><div class="name">Orly Dolev</div><div class="bio">10+ years scaling renewable platforms across Europe, currently managing a 2+ GW portfolio in Romania, Poland and Serbia</div></div>
+      <div class="team-member"><div class="name">Ofer Oberlander</div><div class="bio">15+ years of cross-sector energy experience, currently scaling large-scale solar and BESS platforms in the UK and Western Europe</div></div>
+    </div>
+    <div class="team-section">
+      <h4>Finance &amp; Biz Dev</h4>
+      <div class="team-member"><div class="name">Rob Kesterton</div><div class="bio">Leads Nofar's UK BESS platform, with 20+ years in renewable power financing and project execution across multiple jurisdictions</div></div>
+      <div class="team-member"><div class="name">Guy Hartshtein</div><div class="role">Financial Controller</div><div class="bio">12+ years of finance leadership, overseeing financial operations, IFRS reporting, governance, cash flow, and regulatory compliance</div></div>
+      <div class="team-member"><div class="name">Yoseph Hirsh</div><div class="bio">Leads European market entry, acquisitions, financings, and divestments across multiple jurisdictions</div></div>
+    </div>
+  </div>
+</div>''')
+
+# ── SLIDE 13: Strategy Divider ──
+slides_html.append(divider("Strategy &amp; Roadmap", "Path to European IPO"))
+
+# ── SLIDE 14: Corporate Roadmap ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2><span class="brand">Nofar</span> Europe &ndash; Strategic Corporate Roadmap to European IPO</h2>
+  </div>
+  <div class="content-grid content-grid--3">
+    <div class="phase-card">
+      <div class="phase-num">Phase 1 &middot; June 2026</div>
+      <h3>Institutional Core &amp; Restructuring</h3>
+      <div style="text-align:center; font-size:1.5rem; font-weight:800; color:var(--brand); margin:0.75rem 0;">250&ndash;350 Mil</div>
+      <ul class="bullet-list">
+        <li>Corporate Consolidation &ldquo;One HoldCo&rdquo;</li>
+        <li>Finalize three years proforma historical financial statements (2023&ndash;2025) IFRS compliant (4&ndash;6 weeks)</li>
+        <li>Private Equity Anchor placement</li>
+      </ul>
+    </div>
+    <div class="phase-card">
+      <div class="phase-num">Phase 2 &middot; Sep 2026</div>
+      <h3>Capital Market Debut &amp; Liquidity</h3>
+      <div style="text-align:center; font-size:1.5rem; font-weight:800; color:var(--brand); margin:0.75rem 0;">500 Mil</div>
+      <ul class="bullet-list">
+        <li>Rating &amp; Framework: obtain formal Credit Rating (IG) and debut Bond/Green Bond Framework</li>
+        <li>Debt Market Debut: inaugural Green Bond or senior unsecured debt issuance</li>
+      </ul>
+    </div>
+    <div class="phase-card">
+      <div class="phase-num">Phase 3 &middot; June 2027</div>
+      <h3>IPO Execution</h3>
+      <div style="text-align:center; font-size:1.5rem; font-weight:800; color:var(--brand); margin:0.75rem 0;">400&ndash;500 Mil</div>
+      <ul class="bullet-list">
+        <li>Execute IPO on a European stock exchange leveraging Nofar&rsquo;s track record</li>
+      </ul>
+    </div>
+  </div>
+</div>''')
+
+# ── SLIDE 15: Operational Roadmap ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2><span class="brand">Nofar</span> Europe &ndash; Strategic Operational Roadmap</h2>
+  </div>
+  <div class="card" style="flex:1; overflow-y:auto;">
+    <ul class="bullet-list">
+      <li><strong>Grid-Forming Technology:</strong> In markets like Germany, BESS are no longer just &ldquo;batteries&rdquo;; they are &ldquo;Grid-Forming assets&rdquo; providing synthetic inertia, earning premium long-term contracts</li>
+      <li><strong>Revenue Stacking:</strong> Transitioning from simple PPAs to &ldquo;Merchant-Plus&rdquo; structures, combining wholesale arbitrage, ancillary services, and capacity markets</li>
+      <li><strong>Continue with the diversification</strong> of portfolio technologies also to Wind</li>
+      <li><strong>De-risk in East Europe</strong> through disposals or bringing in equity partner on the platform level</li>
+      <li><strong>Increase footprints</strong> in West and North Europe</li>
+      <li><strong>AI-Driven Power Demand Capture:</strong> 2026 as &ldquo;year of AI scale-up&rdquo; &ndash; data center electricity usage poised to double, with demand hubs in Frankfurt (1.3 GW) and London (1.1 GW)</li>
+      <li><strong>Infrastructure Lead Times &amp; Grid Bypass:</strong> Capital bypassing traditional 5&ndash;10 year grid upgrade timelines</li>
+      <li><strong>Nofar positioned</strong> to provide high-density energy to hyperscale and AI training clusters</li>
+      <li><strong>Behind-the-Meter (BTM) &amp; Direct Wire PPAs:</strong> Co-locate solar and BESS with data center facilities</li>
+      <li><strong>24/7 Firm Power Hybridization:</strong> By pairing our PV generation with our 9.9 GWh BESS pipeline, we offer the &ldquo;24/7 firm power&rdquo; that hyperscalers like Google and Microsoft require to meet their 2030 carbon-free energy goals</li>
+    </ul>
+  </div>
+</div>''')
+
+# ── SLIDE 16: PV to Dispatchable ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2><span class="brand">Nofar</span> Europe &ndash; Strategically Transforming PV into Dispatchable Power</h2>
+  </div>
+  <div class="card" style="flex:1; overflow-y:auto;">
+    <h3>1. Strategic Shift: Standalone PV to Co-Located Ecosystems</h3>
+    <ul class="bullet-list mt-1">
+      <li><strong>Portfolio-Wide Mandate:</strong> Nofar is systematically hybridizing its existing and under-development PV portfolio with Battery Energy Storage Systems (BESS) to capture high-margin revenue and de-risk generation</li>
+      <li><strong>Connection Efficiency:</strong> By co-locating BESS on existing grid connections, we bypass current 5&ndash;10 year queue delays and reduce Levelized Cost of Storage (LCOS) through shared infrastructure</li>
+      <li><strong>Dispatchability Alpha:</strong> Transitioning from &ldquo;Passive Generators&rdquo; to &ldquo;Active Power Plants&rdquo; allows us to capture higher prices</li>
+    </ul>
+    <h3 class="mt-2">Current Hybridization Benchmarks</h3>
+    <ul class="bullet-list mt-1">
+      <li><strong>🇪🇸 Spain:</strong> Strategic self-development of 1.3 GWh BESS specifically targeted at existing grid connections to mitigate midday solar cannibalization</li>
+      <li><strong>🇷🇴 Romania:</strong> Turning a pure solar portfolio into a flexibility hub with 1.3 GWh of BESS in pre-construction, including the 849 MW PV projects currently connecting</li>
+      <li><strong>🇬🇧 UK &amp; 🇮🇹 Italy:</strong> Leveraging the Noventum, Atlantic Green and Sunprime platforms to deliver firm-power profiles that meet the 24/7 clean energy requirements of AI and Data Centers</li>
+    </ul>
+  </div>
+</div>''')
+
+# ── SLIDE 17: Financial Impact ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2><span class="brand">Nofar</span> Europe &ndash; Transforming PV into Dispatchable Power (cont.)</h2>
+  </div>
+  <div class="card" style="flex:1;">
+    <h3>The Financial Impact</h3>
+    <ul class="bullet-list mt-1">
+      <li><strong>Capture Price Protection:</strong> Hybridization increases the average &ldquo;Capture Price&rdquo; of our assets by up to 20&ndash;30% compared to standalone PV peers</li>
+      <li><strong>Revenue Stacking:</strong> Assets now participate in high-frequency arbitrage, ancillary services (FCR/aFRR), and the emerging German Inertia Market</li>
+      <li><strong>Natural Hedge:</strong> Internalized trading platform (Nexte) eliminates negative-price exposure and maximizes the &ldquo;Energy Price Bridge&rdquo;</li>
+    </ul>
+  </div>
+</div>''')
+
+# ── SLIDE 18: Trading ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2><span class="brand">Nofar</span> Europe &ndash; Strategic Advantage &ndash; Trading &amp; Margin Capture</h2>
+  </div>
+  <div class="content-grid content-grid--2">
+    <div class="card">
+      <h3>From Asset Owner to Powerhouse</h3>
+      <ul class="bullet-list mt-1">
+        <li>Nofar has recently acquired a trading platform in Romania, Nexte, and is establishing a new Pan-European trading platform</li>
+        <li><strong>Vertical Integration:</strong> Moving from a passive IPP to an active Powerhouse by acquiring Nexte and initiating an in-house trading platform</li>
+        <li><strong>Eliminating Leakage:</strong> Capturing 100% of the &ldquo;Energy Price Bridge&rdquo; by removing third-party optimizer fees. Nofar EU will retain the spread in-house</li>
+        <li><strong>Active Risk Management:</strong> Shifting from passive hedging to real-time exposure management</li>
+        <li><strong>Benchmark:</strong> Integrated players realize 20&ndash;30% higher margins than passive asset owners</li>
+      </ul>
+    </div>
+    <div>
+      <div class="card" style="border-left:3px solid var(--brand); margin-bottom:1rem;">
+        <h3>Value Chain Flow</h3>
+        <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.75rem; flex-wrap:wrap;">
+          <span style="background:var(--brand); color:#fff; padding:0.4rem 0.8rem; border-radius:8px; font-weight:600; font-size:0.8rem;">Nofar Energy IPP</span>
+          <span style="color:var(--brand); font-weight:700;">→</span>
+          <span style="background:var(--table-alt); padding:0.4rem 0.8rem; border-radius:8px; font-size:0.8rem;">Traders</span>
+          <span style="color:var(--brand); font-weight:700;">→</span>
+          <span style="background:var(--table-alt); padding:0.4rem 0.8rem; border-radius:8px; font-size:0.8rem;">BRPs</span>
+          <span style="color:var(--brand); font-weight:700;">→</span>
+          <span style="background:var(--table-alt); padding:0.4rem 0.8rem; border-radius:8px; font-size:0.8rem;">Suppliers</span>
+          <span style="color:var(--brand); font-weight:700;">→</span>
+          <span style="background:var(--text-primary); color:#fff; padding:0.4rem 0.8rem; border-radius:8px; font-weight:600; font-size:0.8rem;">End Consumer</span>
+        </div>
+        <p class="text-xs mt-1" style="color:var(--text-muted);">Each intermediary = value leakage. In-house trading captures the full spread.</p>
+      </div>
+    </div>
+  </div>
+</div>''')
+
+# ── SLIDE 19: Financial Divider ──
+slides_html.append(divider("Financial Snapshot", "Capital structure, financing, and debt profile"))
+
+# ── SLIDE 20: Capital Allocation ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2><span class="brand">Nofar</span> Europe &ndash; Capital Allocation &amp; Growth Funding</h2>
+  </div>
+  <div class="content-grid content-grid--2">
+    <div class="card" style="flex:1;">
+      <ul class="bullet-list">
+        <li><strong>Prudent and Robust financial structure</strong> with low LTVs allowing the company to attract new debt through capital markets and project financing</li>
+        <li>Debt capacity of <strong class="text-brand">additional [X] billion</strong> euro from capital markets or project financing for 3.3 GWh construction backlog, Q2 2026 COD targets and for new acquisitions</li>
+        <li><strong class="text-brand">700 MW and 7.4 GWh</strong> of the projects are unencumbered providing collateral pool for future capital market issuances</li>
+        <li>Access to local and international lenders for senior and project financing</li>
+        <li><strong>Maturity Profile:</strong> Average debt maturity is a stable 14.2 years, with no material maturities in the near term</li>
+      </ul>
+    </div>
+    <div>
+      <div class="card mb-1" style="text-align:center; border:2px solid var(--brand);">
+        <div style="font-size:0.75rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.1em;">Low Senior Debt Service in the Coming Years</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-box"><div class="stat-value">&euro;702M</div><div class="stat-label">Outstanding loans</div></div>
+        <div class="stat-box"><div class="stat-value">14.2</div><div class="stat-label">Avg debt maturity (years)</div></div>
+      </div>
+      <div class="stat-row mt-1">
+        <div class="stat-box"><div class="stat-value">&euro;782M</div><div class="stat-label">Available facilities</div></div>
+        <div class="stat-box"><div class="stat-value">45%</div><div class="stat-label">Consolidated LTV</div></div>
+      </div>
+    </div>
+  </div>
+</div>''')
+
+# ── SLIDE 21: Project Financing ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2>Project Financing Expertise &ndash; <span class="text-brand">~&euro;1.2B</span></h2>
+  </div>
+  <table class="data-table" style="font-size:0.75rem;">
+    <thead><tr><th>Financing Entity</th><th>Effective Interest Rate</th><th>Total Loan</th><th>Segment</th><th>Project</th><th>Country</th></tr></thead>
+    <tbody>
+      <tr><td>Austrian banking consortium</td><td>EURIBOR + 2.5%</td><td class="num">&euro;150M</td><td>C&amp;I</td><td>Sunprime</td><td>🇮🇹 Italy</td></tr>
+      <tr><td>EIB &amp; Natixis</td><td>EURIBOR + 2%</td><td class="num">&euro;185M</td><td>C&amp;I</td><td></td><td></td></tr>
+      <tr><td>Bankia &amp; Sabadell</td><td>6M EURIBOR SWAP 15Y +1.75%&ndash;2.25%</td><td class="num">&euro;63M</td><td>Utility</td><td>Olmedilla</td><td>🇪🇸 Spain</td></tr>
+      <tr><td>German financial institution</td><td>4.6% (100% fixed)</td><td class="num">&euro;132M</td><td>Utility</td><td>Sabinar</td><td></td></tr>
+      <tr><td>Goldman Sachs</td><td>3M SONIA SWAP 7Y + 2.65%</td><td class="num">&euro;19M</td><td>BESS</td><td>Buxton</td><td>🇬🇧 UK</td></tr>
+      <tr><td>Goldman Sachs, Santander, Hapoalim &amp; Leumi</td><td>6M SONIA SWAP 7Y + 2.75%</td><td class="num">&euro;173M</td><td>BESS</td><td>Cellarhead</td><td></td></tr>
+      <tr><td>Raiffeisen Bank</td><td>EURIBOR + 3.9%</td><td class="num">&euro;60M</td><td>Utility</td><td>Ratesti</td><td>🇷🇴 Romania</td></tr>
+      <tr><td>EBRD &amp; Raiffeisen Bank</td><td>6M EURIBOR SWAP 12Y +2.92%</td><td class="num">&euro;110M</td><td></td><td>Iepuresti / Ghimpati</td><td></td></tr>
+      <tr><td>EBRD, Raiffeisen Bank &amp; OTP</td><td>6M EURIBOR SWAP 12Y +3.3%</td><td class="num">&euro;192M</td><td>Utility</td><td>Slobozia, Corbi &amp; Volter</td><td></td></tr>
+      <tr><td>Nord/LB</td><td>6M EURIBOR +2%&ndash;2.1%</td><td class="num">&euro;64M</td><td>BESS</td><td>Stendal</td><td>🇩🇪 Germany</td></tr>
+    </tbody>
+  </table>
+</div>''')
+
+# ── SLIDE 22: Market Divider ──
+slides_html.append(divider("Market Overview", "European energy landscape and BESS opportunity"))
+
+# ── SLIDE 23: European Market Landscape ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2>European Market Landscape <span style="font-weight:400">(2026 Strategic Outlook)</span></h2>
+  </div>
+  <div class="card" style="flex:1;">
+    <ul class="bullet-list">
+      <li>The European market has entered a <strong>structural maturation phase</strong>. While 2025 saw a slight contraction in pure solar installs, 2026 is the <strong>&ldquo;Year of Flexibility.&rdquo;</strong> The primary value driver has shifted from Levelized Cost of Energy (LCOE) to Capture Prices.</li>
+      <li><strong>The Problem:</strong> Solar cannibalization during peak hours (50&ndash;60% capture rates in Spain/Germany)</li>
+      <li><strong>The Nofar Solution:</strong> Hybridization and BESS (Battery Energy Storage Systems) to shift generation to high-price hours</li>
+      <li>The European energy transition has entered an <strong>&ldquo;Operational Phase&rdquo;</strong> where value is migrating from sheer capacity to flexible, dispatchable generation. Nofar Europe is positioned at the intersection of this shift.</li>
+    </ul>
+  </div>
+</div>''')
+
+# ── SLIDE 24: Volume to Value ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2>Market Overview &ndash; From &ldquo;Volume&rdquo; to &ldquo;Value&rdquo;</h2>
+  </div>
+  <table class="data-table" style="font-size:0.78rem;">
+    <thead><tr><th>Country</th><th>2026 Status &amp; Catalyst</th><th>Nofar&rsquo;s Strategic Alignment</th></tr></thead>
+    <tbody>
+      <tr><td><strong>🇬🇧 UK</strong></td><td>Grid Reform Year: Transition to a &ldquo;Gated Process.&rdquo; New NESO prioritization favors &ldquo;Ready-to-Build&rdquo; projects.</td><td>Nofar&rsquo;s Noventum platform (~6 GW pipeline) with secured grid approvals is now a high-premium asset in this restricted environment.</td></tr>
+      <tr><td><strong>🇩🇪 Germany</strong></td><td>Inertia Market Launch: TSOs began procuring &ldquo;Inertia Services&rdquo; in Jan 2026. Grid-forming BESS now access 2&ndash;10 year fixed-price contracts.</td><td>The Stendal Case Study (209 MWh) serves as the blueprint for Nofar&rsquo;s expansion into this new high-margin revenue stream.</td></tr>
+      <tr><td><strong>🇷🇴 Romania</strong></td><td>CfD Execution: A &euro;3B Contracts-for-Difference program and &euro;815M in grid funds are driving rapid maturation.</td><td>Nofar is the local leader, with the largest solar project at COD (Ratesti, 155 MW) and a 1.3 GWh BESS hybrid pipeline.</td></tr>
+      <tr><td><strong>🇮🇹 Italy</strong></td><td>The Mattei Plan Era: Strategic pivot to centralized energy investment to de-risk national infrastructure.</td><td>Nofar&rsquo;s Sunprime platform is scaling under high-security revenue frameworks including CfD and Capacity Markets.</td></tr>
+      <tr><td><strong>🇪🇸 Spain</strong></td><td>Hybridization Maturity: Market volatility has made standalone solar insufficient; PV-BESS hybridization is the viable path.</td><td>Nofar&rsquo;s strategy focuses on maximizing capture prices via PPAs and 1.3 GWh of BESS self-development on existing grid connections.</td></tr>
+    </tbody>
+  </table>
+</div>''')
+
+# ── SLIDE 25: Italy ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2>🇮🇹 Italy &ndash; Market Overview</h2>
+  </div>
+  <div class="content-grid content-grid--2">
+    <div class="card">
+      <h3>Market Fundamentals</h3>
+      <ul class="bullet-list text-sm">
+        <li><strong class="text-brand">Top European Solar Hub:</strong> Installed base of <strong>43.5 GW in 2025</strong>. Solar surging 25% YoY to generate 44 TWh in 2025.</li>
+        <li><strong class="text-brand">Ambitious 2030 Targets:</strong> <strong>79.2 GW of solar and 28.1 GW of wind by 2030</strong>, with renewables covering 63% of electricity consumption.</li>
+        <li><strong class="text-brand">Critical Flexibility Need:</strong> As coal is phased out, a 59 GW increase in variable generation requires flexibility.</li>
+        <li><strong class="text-brand">CfD Frameworks:</strong> Auction-based frameworks offering <strong>20-year two-way Contracts for Difference</strong>.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>The BESS Opportunity</h3>
+      <ul class="bullet-list text-sm">
+        <li><strong class="text-brand">Massive Scale-Up:</strong> Total storage capacity reached <strong>~7.4 GW (17.9 GWh) by 2025</strong>.</li>
+        <li><strong class="text-brand">MACSE Framework:</strong> EC approved <strong>&euro;17.7 billion</strong> state aid scheme to procure <strong>9 GW / 71 GWh</strong> of centralized storage via long-term capacity contracts through 2033.</li>
+        <li><strong class="text-brand">TIDE Reform:</strong> 15-minute market intervals for intraday and imbalance settlement.</li>
+        <li><strong class="text-brand">Southern Synergy:</strong> Hybrid solar-plus-storage is the standard in high-penetration regions like Sicily and Puglia.</li>
+      </ul>
+    </div>
+  </div>
+</div>''')
+
+# ── SLIDE 26: UK ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2>🇬🇧 UK &ndash; Market Overview</h2>
+  </div>
+  <div class="content-grid content-grid--2">
+    <div class="card">
+      <h3>Market Fundamentals</h3>
+      <ul class="bullet-list text-sm">
+        <li><strong class="text-brand">Renewables-Led Generation:</strong> In 2025, renewables became GB&rsquo;s largest electricity source, providing <strong>47% of total generation</strong>. Wind power accounts for over 57% of all renewable output.</li>
+        <li><strong class="text-brand">Coal-Free Grid:</strong> GB closed its last coal-fired plant in September 2024.</li>
+        <li><strong class="text-brand">Clean Power 2030 Ambition:</strong> The government&rsquo;s plan targets clean generation exceeding domestic demand by 2030.</li>
+        <li><strong class="text-brand">Grid Connection Reform:</strong> NESO overhauled to a <strong>&ldquo;First Ready, First Connected&rdquo;</strong> model. Projects meeting &ldquo;Gate 2&rdquo; criteria receive priority.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>The BESS Opportunity</h3>
+      <ul class="bullet-list text-sm">
+        <li><strong class="text-brand">Accelerated Capacity Build:</strong> Flexible energy capacity forecast to increase <strong>26% by 2040</strong>. Battery storage projected to grow from 5 GW to <strong>16 GW by 2040</strong>.</li>
+        <li><strong class="text-brand">Diversified Revenue Stacking:</strong> BESS assets secure returns by &ldquo;stacking&rdquo; multiple streams: wholesale energy arbitrage and ancillary services.</li>
+        <li><strong class="text-brand">High-Yield Asset Class:</strong> Standalone BESS projects achieving <strong>IRRs of ~13.2%</strong> for 2029 entry years.</li>
+        <li><strong class="text-brand">Long Duration (LDES) Support:</strong> Ofgem&rsquo;s new Cap and Floor scheme aims to bring up to 7.7 GW online by 2035.</li>
+      </ul>
+    </div>
+  </div>
+</div>''')
+
+# ── SLIDE 27: Germany ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2>🇩🇪 Germany &ndash; Market Overview</h2>
+  </div>
+  <div class="content-grid content-grid--2">
+    <div class="card">
+      <h3>Market Fundamentals</h3>
+      <ul class="bullet-list text-sm">
+        <li><strong class="text-brand">Largest European Hub:</strong> Europe&rsquo;s largest electricity producer and consumer, with <strong>~432 TWh in 2024</strong> and nearly <strong>100 GW</strong> of flexible assets expected by 2030.</li>
+        <li><strong class="text-brand">Renewables Surge:</strong> <strong>59% of generation in 2024</strong>, rising to <strong>67.5% in Q2 2025</strong>. Legally mandated to reach <strong>80% by 2030</strong>.</li>
+        <li><strong class="text-brand">Thermal Phase-Out:</strong> Total <strong>coal exit by 2038</strong> and carbon neutrality by 2045.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>The BESS Opportunity</h3>
+      <ul class="bullet-list text-sm">
+        <li><strong class="text-brand">Explosive Capacity Growth:</strong> Utility-scale battery capacity projected to surge from <strong>2.4 GW in 2025</strong> to <strong>11 GW by 2029</strong>, reaching <strong>40 GW by 2060</strong>.</li>
+        <li><strong class="text-brand">High-Yield Configurations:</strong> 2-hour duration batteries delivering <strong>IRRs of ~21%</strong> for 2026 entry.</li>
+        <li><strong class="text-brand">New Revenue Stacking:</strong> Market-based procurement for inertia launches in Jan 2026, offering <strong>fixed premium upside</strong> for grid-forming batteries.</li>
+      </ul>
+    </div>
+  </div>
+</div>''')
+
+# ── SLIDE 28: Romania ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2>🇷🇴 Romania &ndash; Market Overview</h2>
+  </div>
+  <div class="content-grid content-grid--2">
+    <div class="card">
+      <h3>Market Fundamentals</h3>
+      <ul class="bullet-list text-sm">
+        <li><strong class="text-brand">Largest Growth Hub in SEE:</strong> Power market capacity of <strong>~25.3 GW in 2025</strong>, projected to reach <strong>~38.9 GW by 2031</strong> (7.42% CAGR).</li>
+        <li><strong class="text-brand">Renewables Surge:</strong> 68% of the power market share in 2025. Solar capacity crossed 7 GW.</li>
+        <li><strong class="text-brand">Coal Phase-Out:</strong> Lignite-fired generation (2.6 GW) slated for complete decommissioning by 2032.</li>
+        <li><strong class="text-brand">Liberalized Pricing:</strong> Retail prices fully liberalized in July 2025, driving demand for corporate PPAs.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>The BESS Opportunity</h3>
+      <ul class="bullet-list text-sm">
+        <li><strong class="text-brand">Breakthrough Capacity:</strong> Projected to reach <strong>2.2 GW by end of 2026</strong>, up from just 150 MW in early 2025.</li>
+        <li><strong class="text-brand">High-Yield Potential:</strong> Standalone BESS projects achieving <strong>double-digit IRRs</strong>, with hybrid solar-plus-storage showing even higher promise post-2028.</li>
+        <li><strong class="text-brand">Supportive Funding:</strong> Government committed <strong>&euro;300M+</strong> via EU Modernisation Fund specifically for BESS.</li>
+      </ul>
+    </div>
+  </div>
+</div>''')
+
+# ── SLIDE 29: Platform Divider ──
+slides_html.append(divider("Platform Overview", "Regional platforms and project portfolios"))
+
+# ── SLIDE 30: Sunprime ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2><span class="brand">Sunprime</span> &ndash; A Leading DG Platform with Accelerated Growth</h2>
+  </div>
+  <div class="content-grid content-grid--2">
+    <div>
+      <div class="card mb-1">
+        <h3>Continued growth in connected and ready to be connected</h3>
+        <p class="text-xs" style="color:var(--text-muted);">100% holdings</p>
+        <div class="stat-row mt-1">
+          <div class="stat-box"><div class="stat-value" style="font-size:1.4rem;">203</div><div class="stat-label">Million euro (Revenue)</div></div>
+          <div class="stat-box"><div class="stat-value" style="font-size:1.4rem;">228</div><div class="stat-label">Million euro (Forecast)</div></div>
+        </div>
+      </div>
+      <div class="card mb-1">
+        <h3>High and Secure Revenues</h3>
+        <p class="text-sm">Operating under agreements and regulations that guarantee secure and high long-term income:</p>
+        <p class="text-sm" style="color:var(--brand); font-weight:700; margin-top:0.3rem;">CfD, Tolling &amp; Capacity Market</p>
+      </div>
+    </div>
+    <div>
+      <div class="card mb-1">
+        <h3>High Profitability Projects</h3>
+        <p class="text-xs" style="color:var(--text-muted);">Projects under construction and pre-construction, 100% holdings, euro millions</p>
+        <table class="data-table mt-1" style="font-size:0.75rem;">
+          <thead><tr><th></th><th>EBITDA</th><th>CAPEX</th><th>Return</th></tr></thead>
+          <tbody>
+            <tr><td>Under construction</td><td class="num">37</td><td class="num">196</td><td class="num highlight">11%</td></tr>
+            <tr><td>Pre-construction</td><td class="num">29</td><td class="num">259</td><td class="num highlight">19%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Financial Closings</h3>
+        <p class="text-xs" style="color:var(--text-muted);">100% holdings</p>
+        <ul class="bullet-list text-sm mt-1">
+          <li>2 financings totaling EUR <strong>335 million</strong> completed</li>
+          <li>Leverage rates of <strong>75%&ndash;85%</strong> with interest rates of <strong>approximately 5%</strong> &ndash; High Lender Confidence</li>
+          <li>In negotiations for additional financing of <strong>EUR 430 million</strong></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>''')
+
+# ── SLIDE 31: UK Platforms ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2><span class="brand">Nofar EU &ndash; UK</span> &ndash; Integrated Presence Across the British Energy Value Chain</h2>
+  </div>
+  <div class="content-grid content-grid--2">
+    <div class="card">
+      <h3 style="color:var(--brand);">Atlantic Green</h3>
+      <p class="text-sm mb-1">A leading platform, focused on construction and operation of BESS projects across UK</p>
+      <div style="border-left:3px solid var(--brand); padding-left:0.75rem; margin-bottom:0.75rem;">
+        <div class="fw-700">Buxton &ndash; 60 MWh</div>
+        <p class="text-xs">Status: Connected. Financing &amp; optimization agreement with Goldman Sachs &ndash; <strong>&pound;16.5 Million</strong>. Performance above market average since start of operation.</p>
+      </div>
+      <div style="border-left:3px solid var(--accent); padding-left:0.75rem; margin-bottom:0.75rem;">
+        <div class="fw-700">Cellarhead &ndash; 624 MWh</div>
+        <p class="text-xs">Status: Pre-construction. Securing Financing for <strong>&pound;152 Million</strong>. Annual availability payments &ndash; ~&pound;2 million per year.</p>
+      </div>
+      <div style="border-left:3px solid var(--text-muted); padding-left:0.75rem;">
+        <div class="fw-700">Toton &ndash; 260 MWh</div>
+        <p class="text-xs">Status: Advanced development</p>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--brand);">Noventum</h3>
+      <p class="text-sm mb-1">Platform focused on project development &amp; rapid value creation through RTB sales</p>
+      <ul class="bullet-list text-sm">
+        <li>Focused on developing greenfield projects in the UK</li>
+        <li>Business model focused on RTB project sales &amp; rapid value creation</li>
+        <li>Team of 26 leading professionals</li>
+        <li>Developed a <strong>~6 GW</strong> pipeline in 4 years, vast majority with grid approvals</li>
+        <li><strong>~1 GW</strong> expected to secure near-term grid connections (pre-2030), generating <strong class="text-brand">~&pound;100M estimated value</strong></li>
+      </ul>
+      <div class="stat-box mt-1" style="text-align:center;">
+        <div class="stat-value">6,017 MW</div>
+        <div class="stat-label">Total Portfolio</div>
+      </div>
+    </div>
+  </div>
+</div>''')
+
+# ── SLIDE 32: Romania ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2><span class="brand">Nofar Romania</span></h2>
+  </div>
+  <div class="content-grid content-grid--sidebar">
+    <div>
+      <div class="card mb-1" style="border-left:3px solid var(--brand);">
+        <ul class="bullet-list">
+          <li>A local platform founded by Nofar in 2022</li>
+          <li>PV utility projects &ndash; <strong>1 GWp</strong> connected, ready to connect, and under construction</li>
+          <li>BESS &ndash; <strong>1.3 GWh</strong> in Pre-construction, turning PV into hybrid projects</li>
+          <li>Financial closes of <strong>360 million euro</strong></li>
+          <li>Ratesti project (155 MW) divested at attractive profitability</li>
+        </ul>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Projects</th><th>Capacity MWp</th><th>Capacity MWh</th><th>PV Status</th></tr></thead>
+        <tbody>
+          <tr><td>Iepuresti</td><td class="num">169</td><td class="num">320</td><td>Ready to be connected</td></tr>
+          <tr><td>Ghimpati</td><td class="num">146</td><td class="num">240</td><td>Ready to be connected</td></tr>
+          <tr><td>Slobozia</td><td class="num">74</td><td class="num">&ndash;</td><td>Ready to be connected</td></tr>
+          <tr><td>Corbii Mari</td><td class="num">281</td><td class="num">442</td><td>Under construction</td></tr>
+          <tr><td>Volter</td><td class="num">179</td><td class="num">300</td><td>Under construction</td></tr>
+          <tr><td><strong>Total</strong></td><td class="num"><strong>849</strong></td><td class="num"><strong>1,302</strong></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="sidebar-dark">
+      <h3>Significant Portfolio</h3>
+      <p class="text-xs" style="color:var(--text-on-dark-muted);">100% holdings, MW/MWh</p>
+      <p class="text-xs" style="color:var(--text-on-dark-muted); margin-top:0.5rem;">Ghimpati, Romania</p>
+    </div>
+  </div>
+</div>''')
+
+# ── SLIDE 33: Spain ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2><span class="brand">Nofar&rsquo;s</span> Activity in Spain &ndash; 743 MW Operational Projects</h2>
+  </div>
+  <div class="content-grid content-grid--2">
+    <div>
+      <div class="card mb-1">
+        <h3 style="color:var(--brand);">Olmedilla &amp; Sabinar Solar Park</h3>
+        <p class="text-sm" style="color:var(--text-muted);">447 MW &amp; 1.3 GWh &middot; 100% holdings</p>
+        <ul class="bullet-list text-sm mt-1">
+          <li><strong>PV:</strong> 407 MW operational &amp; 40 MW pre-construction</li>
+          <li><strong>BESS:</strong> Self-development on existing grid connections ~1.3 GWh</li>
+          <li>Maximizing electricity prices through PPA agreements</li>
+          <li>Financial close for projects totaling over <strong>~&euro;200 million</strong></li>
+        </ul>
+        <div class="stat-box mt-1" style="text-align:center;">
+          <div class="stat-value">407 MW</div>
+          <div class="stat-label">Operational PV (85 + 103 + 135 + 85 MW)</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card mb-1">
+        <h3 style="color:var(--brand);">Ellomay Spain</h3>
+        <p class="text-sm" style="color:var(--text-muted);">336 MW &middot; 100% holdings &middot; 71% of generation secured under PPA</p>
+        <table class="data-table mt-1" style="font-size:0.78rem;">
+          <thead><tr><th>Project</th><th>Status</th><th>MW</th><th>PPA / Merchant</th></tr></thead>
+          <tbody>
+            <tr><td>Talasol</td><td>Operational</td><td class="num">300</td><td>80% PPA</td></tr>
+            <tr><td>Ellomay Solar</td><td>Operational</td><td class="num">28</td><td>Merchant</td></tr>
+            <tr><td>Small projects</td><td>Operational</td><td class="num">8</td><td>Merchant</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>''')
+
+# ── SLIDE 34: Case Study Divider ──
+slides_html.append(divider("Case Studies", "Proven execution and value creation"))
+
+# ── SLIDE 35: Stendal ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2><span class="brand">Stendal</span> &ndash; Case Study</h2>
+  </div>
+  <div class="content-grid content-grid--2">
+    <div class="card" style="border-left:3px solid var(--brand);">
+      <h3>Storage Project with High &amp; Secured Returns</h3>
+      <ul class="bullet-list mt-1">
+        <li><strong>Stendal &ndash; 209 MWh</strong></li>
+        <li>Construction completed according to plan</li>
+        <li>Tolling agreement securing high long-term revenues &ndash; <strong>&euro;85&ndash;95 million over 7 years</strong></li>
+        <li>Financial close under excellent terms &ndash; <strong>71% leverage ratio</strong>, ensuring high equity returns</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left:3px solid var(--accent);">
+      <h3>Agreement for Significant Value Realization Within a Short Period</h3>
+      <ul class="bullet-list mt-1">
+        <li>Agreement to sell 49% of the project for <strong>~&euro;26 million</strong></li>
+        <li>Return of over <strong>70% of total equity invested</strong> while retaining majority holdings and control</li>
+        <li style="color:var(--brand); font-weight:600;"><strong>45% ROI</strong> achieved within less than two years</li>
+      </ul>
+      <p class="text-sm mt-1"><strong>Nofar has an additional ~1,200 MWh in development</strong></p>
+    </div>
+  </div>
+  <div class="card mt-1" style="text-align:center; border:2px solid var(--brand);">
+    <div style="font-size:2rem; font-weight:800; color:var(--brand);">45% ROI</div>
+    <p style="font-size:0.9rem; color:var(--text-secondary); margin-top:0.3rem;">Achieved within less than two years</p>
+  </div>
+</div>''')
+
+# ── SLIDE 36: Ratesti ──
+slides_html.append('''<div class="slide slide--light">
+  <div class="slide-header">
+    <h2><span class="brand">Ratesti</span> &ndash; Case Study</h2>
+  </div>
+  <div class="content-grid content-grid--2">
+    <div class="card" style="border-left:3px solid var(--brand);">
+      <h3>Ratesti Project</h3>
+      <ul class="bullet-list mt-1">
+        <li><strong>Project Reached COD:</strong> 2023</li>
+        <li><strong>Capacity:</strong> 155 MW &ndash; Largest solar PV project in Romania at COD</li>
+        <li><strong>Shareholding Structure (pre-deal):</strong> 50% Nofar | 50% Econergy</li>
+        <li><strong>Equity Invested by Nofar:</strong> ~&euro;20.5 million</li>
+        <li><strong>Financial Close:</strong> &euro;60 million with Raiffeisen Bank</li>
+      </ul>
+    </div>
+    <div class="card" style="border-left:3px solid var(--accent);">
+      <h3>Creating Strong Value via Targeted Divestment</h3>
+      <ul class="bullet-list mt-1">
+        <li>Equity sale agreement signed, with Econergy, for <strong>~&euro;45.6 million</strong></li>
+        <li>The transaction presents an enterprise value of <strong>~&euro;900k per MW</strong></li>
+        <li>Nofar Romania has <strong>~850 MW additional advanced projects</strong></li>
+      </ul>
+    </div>
+  </div>
+  <div class="card mt-1" style="text-align:center; border:2px solid var(--brand);">
+    <div style="font-size:2rem; font-weight:800; color:var(--brand);">122% ROI</div>
+    <p style="font-size:0.9rem; color:var(--text-secondary); margin-top:0.3rem;">Deal value: &euro;45.6M vs Invested capital: &euro;20.5M</p>
+  </div>
+</div>''')
+
+# ── SLIDE 37: Noy Nofar ──
+slides_html.append('''<div class="slide slide--dark">
+  <div class="divider-badge">Case Study</div>
+  <h1>Noy <span class="accent">Nofar</span></h1>
+  <div class="divider-line"></div>
+</div>''')
+
+# ── SLIDE 38: Italy CfD ──
+slides_html.append('''<div class="slide slide--dark">
+  <div class="divider-badge">Case Study</div>
+  <h1>Italy <span class="accent">CfD</span> Latest IR</h1>
+  <div class="divider-line"></div>
+</div>''')
+
+# ============================================================
+# ASSEMBLE
+# ============================================================
+
+all_slides = "\n".join(slides_html)
+
+html = f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nofar Europe &mdash; Investor Presentation &middot; February 2026</title>
+  <style>{CSS}</style>
+</head>
+<body>
+  <div class="deck">
+    {all_slides}
+  </div>
+  <div class="nav">
+    <button onclick="prev()" title="Previous (←)">‹</button>
+    <div class="progress"><div class="progress-bar"></div></div>
+    <span class="counter">1 / {len(slides_html)}</span>
+    <button onclick="next()" title="Next (→)">›</button>
+  </div>
+  <script>{JS}</script>
+</body>
+</html>'''
+
+with open(OUT, 'w', encoding='utf-8') as f:
+    f.write(html)
+
+print(f"Created: {OUT}")
+print(f"Total slides: {len(slides_html)}")
+print(f"File size: {len(html):,} bytes")
